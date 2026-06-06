@@ -1,1 +1,325 @@
 
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PiArena — Ludo sur Pi Network</title>
+<script src="https://sdk.minepi.com/pi-sdk.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --pi-purple: #6c3fd1;
+    --pi-gold: #f0a500;
+    --pi-dark: #0d0d1a;
+    --pi-darker: #07070f;
+    --pi-card: #13132a;
+    --red: #e74c3c; --blue: #3498db; --green: #2ecc71; --yellow: #f1c40f;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#07070f; font-family:'Exo 2',sans-serif; color:#fff; min-height:100vh; overflow-x:hidden; }
+  body::before { content:''; position:fixed; inset:0; background:radial-gradient(ellipse at 20% 20%,rgba(108,63,209,.15) 0%,transparent 50%),radial-gradient(ellipse at 80% 80%,rgba(240,165,0,.08) 0%,transparent 50%); pointer-events:none; z-index:0; }
+
+  header { position:relative; z-index:10; text-align:center; padding:14px 16px 8px; border-bottom:1px solid rgba(108,63,209,.3); background:rgba(13,13,26,.9); }
+  .logo { font-family:'Orbitron',monospace; font-size:24px; font-weight:900; letter-spacing:3px; background:linear-gradient(135deg,#6c3fd1,#f0a500); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  .logo span { font-size:11px; display:block; letter-spacing:6px; opacity:.6; }
+
+  #pi-bar { display:flex; align-items:center; justify-content:center; gap:10px; padding:7px 16px; background:rgba(108,63,209,.1); border-bottom:1px solid rgba(108,63,209,.2); font-size:13px; }
+  #pi-bar .avatar { width:26px; height:26px; border-radius:50%; background:linear-gradient(135deg,#6c3fd1,#f0a500); display:flex; align-items:center; justify-content:center; font-size:13px; }
+  #pi-username { font-weight:600; color:#f0a500; }
+  .pi-badge { background:linear-gradient(135deg,#6c3fd1,#4a2a9e); padding:2px 8px; border-radius:20px; font-size:11px; font-family:'Orbitron',monospace; }
+
+  .screen { display:none; position:relative; z-index:5; }
+  .screen.active { display:block; }
+
+  /* HOME */
+  #home { padding:24px 20px; text-align:center; }
+  .home-title { font-family:'Orbitron',monospace; font-size:20px; font-weight:700; margin-bottom:6px; }
+  .home-sub { color:rgba(255,255,255,.5); font-size:13px; margin-bottom:20px; }
+
+  /* Payment card */
+  .pay-card { background:linear-gradient(135deg,rgba(108,63,209,.2),rgba(240,165,0,.1)); border:1px solid rgba(240,165,0,.4); border-radius:16px; padding:18px; margin-bottom:20px; }
+  .pay-card h3 { font-family:'Orbitron',monospace; font-size:13px; color:#f0a500; margin-bottom:10px; letter-spacing:2px; }
+  .pay-amount { font-family:'Orbitron',monospace; font-size:36px; font-weight:900; color:#f0a500; text-shadow:0 0 20px rgba(240,165,0,.6); }
+  .pay-amount span { font-size:14px; opacity:.6; display:block; }
+  .pay-features { display:flex; justify-content:center; gap:16px; margin-top:10px; flex-wrap:wrap; }
+  .pay-feature { font-size:11px; color:rgba(255,255,255,.6); background:rgba(255,255,255,.05); padding:4px 10px; border-radius:20px; }
+
+  .player-select { display:flex; gap:10px; justify-content:center; margin-bottom:18px; }
+  .player-btn { width:60px; height:60px; border-radius:14px; border:2px solid rgba(108,63,209,.4); background:#13132a; color:#fff; font-family:'Orbitron',monospace; font-size:18px; font-weight:700; cursor:pointer; transition:all .2s; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
+  .player-btn span { font-size:8px; font-family:'Exo 2',sans-serif; opacity:.6; }
+  .player-btn.selected { border-color:#f0a500; background:linear-gradient(135deg,rgba(108,63,209,.4),rgba(240,165,0,.2)); box-shadow:0 0 20px rgba(240,165,0,.4); }
+
+  .btn-main { width:100%; padding:16px; border-radius:14px; border:none; background:linear-gradient(135deg,#f0a500,#e67e00); color:#000; font-family:'Orbitron',monospace; font-size:15px; font-weight:900; letter-spacing:2px; cursor:pointer; transition:all .2s; box-shadow:0 0 20px rgba(240,165,0,.4); margin-bottom:10px; }
+  .btn-main:hover { transform:translateY(-2px); box-shadow:0 0 30px rgba(240,165,0,.7); }
+  .btn-secondary { width:100%; padding:12px; border-radius:12px; border:2px solid rgba(108,63,209,.4); background:transparent; color:rgba(255,255,255,.6); font-size:13px; cursor:pointer; margin-bottom:8px; }
+  .btn-connect { width:100%; padding:14px; border-radius:14px; border:none; background:linear-gradient(135deg,#6c3fd1,#4a2a9e); color:#fff; font-family:'Orbitron',monospace; font-size:13px; font-weight:700; cursor:pointer; margin-bottom:12px; box-shadow:0 0 20px rgba(108,63,209,.4); }
+
+  .status-bar { padding:10px 14px; border-radius:12px; margin-bottom:14px; font-size:13px; text-align:center; font-weight:600; }
+  .status-connected { background:rgba(46,204,113,.15); border:1px solid rgba(46,204,113,.4); color:#2ecc71; }
+  .status-disconnected { background:rgba(231,76,60,.1); border:1px solid rgba(231,76,60,.3); color:#e74c3c; }
+
+  /* GAME */
+  #game { padding:8px 10px 16px; }
+  .game-info { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding:7px 12px; background:#13132a; border-radius:10px; border:1px solid rgba(108,63,209,.2); }
+  .turn-indicator { font-family:'Orbitron',monospace; font-size:11px; }
+  .btn-small { padding:5px 12px; border-radius:8px; border:1px solid rgba(108,63,209,.4); background:transparent; color:rgba(255,255,255,.6); font-size:11px; cursor:pointer; }
+
+  .players-status { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:8px; }
+  .player-card { background:#13132a; border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:8px 10px; display:flex; align-items:center; gap:7px; transition:all .3s; }
+  .player-card.active-player { border-color:#f0a500; box-shadow:0 0 10px rgba(240,165,0,.25); }
+  .player-dot { width:18px; height:18px; border-radius:50%; border:2px solid rgba(255,255,255,.3); flex-shrink:0; }
+  .player-dot.red { background:#e74c3c; } .player-dot.blue { background:#3498db; } .player-dot.green { background:#2ecc71; } .player-dot.yellow { background:#f1c40f; }
+  .player-info { flex:1; }
+  .player-name { font-size:11px; font-weight:600; }
+  .player-score { font-size:9px; color:rgba(255,255,255,.4); }
+
+  #board-wrap { display:flex; justify-content:center; margin-bottom:8px; }
+  #board { display:grid; grid-template-columns:repeat(15,1fr); grid-template-rows:repeat(15,1fr); width:min(95vw,400px); height:min(95vw,400px); border:2px solid rgba(108,63,209,.5); border-radius:10px; overflow:hidden; box-shadow:0 0 20px rgba(108,63,209,.4); }
+  .cell { display:flex; align-items:center; justify-content:center; position:relative; border:.5px solid rgba(255,255,255,.05); font-size:7px; }
+  .cell-red { background:rgba(231,76,60,.25); } .cell-blue { background:rgba(52,152,219,.25); } .cell-green { background:rgba(46,204,113,.25); } .cell-yellow { background:rgba(241,196,15,.25); }
+  .cell-white { background:rgba(255,255,255,.04); } .cell-safe { background:rgba(168,230,207,.12); }
+  .cell-center { background:linear-gradient(135deg,rgba(108,63,209,.4),rgba(240,165,0,.2)); }
+  .cell-home-red { background:rgba(231,76,60,.45); } .cell-home-blue { background:rgba(52,152,219,.45); } .cell-home-green { background:rgba(46,204,113,.45); } .cell-home-yellow { background:rgba(241,196,15,.45); }
+
+  .pion { width:72%; height:72%; border-radius:50%; border:2px solid rgba(255,255,255,.6); cursor:pointer; transition:transform .15s; position:absolute; display:flex; align-items:center; justify-content:center; font-size:7px; font-weight:700; color:rgba(0,0,0,.7); z-index:2; }
+  .pion-red { background:radial-gradient(circle at 35% 35%,#ff6b6b,#e74c3c); }
+  .pion-blue { background:radial-gradient(circle at 35% 35%,#74b9ff,#3498db); }
+  .pion-green { background:radial-gradient(circle at 35% 35%,#55efc4,#2ecc71); }
+  .pion-yellow { background:radial-gradient(circle at 35% 35%,#ffeaa7,#f1c40f); }
+  .pion.movable { animation:pulse-pion .6s ease-in-out infinite alternate; box-shadow:0 0 10px rgba(255,255,255,.8); }
+  @keyframes pulse-pion { from { transform:scale(1); } to { transform:scale(1.3); } }
+
+  .dice-area { display:flex; align-items:center; justify-content:center; gap:14px; margin-bottom:8px; padding:12px; background:#13132a; border-radius:12px; border:1px solid rgba(108,63,209,.2); }
+  #dice { width:58px; height:58px; background:linear-gradient(135deg,#fff,#ddd); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:32px; cursor:pointer; border:none; transition:all .2s; box-shadow:0 4px 12px rgba(0,0,0,.4); user-select:none; }
+  #dice.rolling { animation:roll .5s ease-in-out; }
+  @keyframes roll { 0%{transform:rotate(0deg) scale(1)} 25%{transform:rotate(90deg) scale(1.1)} 50%{transform:rotate(180deg) scale(.9)} 75%{transform:rotate(270deg) scale(1.1)} 100%{transform:rotate(360deg) scale(1)} }
+  .dice-info { text-align:center; }
+  .dice-result { font-family:'Orbitron',monospace; font-size:26px; font-weight:900; color:#f0a500; text-shadow:0 0 15px rgba(240,165,0,.6); }
+  .dice-label { font-size:10px; color:rgba(255,255,255,.4); }
+  #roll-btn { padding:10px 20px; border-radius:10px; border:none; background:linear-gradient(135deg,#6c3fd1,#4a2a9e); color:#fff; font-family:'Orbitron',monospace; font-size:12px; font-weight:700; cursor:pointer; transition:all .2s; box-shadow:0 0 15px rgba(108,63,209,.4); }
+  #roll-btn:disabled { opacity:.4; cursor:not-allowed; box-shadow:none; }
+
+  #msg { text-align:center; font-size:12px; color:rgba(255,255,255,.55); padding:6px; min-height:26px; }
+
+  /* WIN */
+  #win { padding:40px 24px; text-align:center; }
+  .win-emoji { font-size:70px; margin-bottom:16px; animation:bounce .6s ease-in-out infinite alternate; }
+  @keyframes bounce { from{transform:scale(1)} to{transform:scale(1.15)} }
+  .win-title { font-family:'Orbitron',monospace; font-size:24px; font-weight:900; margin-bottom:8px; background:linear-gradient(135deg,#6c3fd1,#f0a500); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  .win-sub { color:rgba(255,255,255,.55); font-size:14px; margin-bottom:24px; }
+
+  /* PAYMENT MODAL */
+  #pay-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.85); z-index:100; align-items:center; justify-content:center; padding:20px; }
+  #pay-modal.show { display:flex; }
+  .pay-modal-card { background:#13132a; border:1px solid rgba(240,165,0,.4); border-radius:20px; padding:28px 24px; width:100%; max-width:340px; text-align:center; }
+  .pay-modal-card h2 { font-family:'Orbitron',monospace; font-size:16px; color:#f0a500; margin-bottom:6px; }
+  .pay-modal-card p { color:rgba(255,255,255,.55); font-size:13px; margin-bottom:20px; }
+  .pay-modal-amount { font-family:'Orbitron',monospace; font-size:42px; font-weight:900; color:#f0a500; text-shadow:0 0 20px rgba(240,165,0,.6); margin-bottom:20px; }
+  .pay-modal-amount span { font-size:16px; display:block; opacity:.6; }
+  .btn-pay { width:100%; padding:16px; border-radius:14px; border:none; background:linear-gradient(135deg,#f0a500,#e67e00); color:#000; font-family:'Orbitron',monospace; font-size:14px; font-weight:900; cursor:pointer; margin-bottom:10px; }
+  .btn-cancel { width:100%; padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,.2); background:transparent; color:rgba(255,255,255,.5); font-size:13px; cursor:pointer; }
+
+  #toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(100px); background:rgba(108,63,209,.95); color:#fff; padding:10px 22px; border-radius:30px; font-size:13px; font-weight:600; z-index:1000; transition:transform .3s; white-space:nowrap; }
+  #toast.show { transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">π ARENA <span>LUDO · PI NETWORK · TESTNET</span></div>
+</header>
+<div id="pi-bar">
+  <div class="avatar">π</div>
+  <span id="pi-username">Non connecté</span>
+  <span class="pi-badge">TESTNET</span>
+</div>
+
+<!-- HOME -->
+<div id="home" class="screen active">
+  <div style="padding:20px 16px;">
+    <div id="status-bar" class="status-bar status-disconnected">⚠️ Connecte ton wallet Pi pour jouer</div>
+
+    <button class="btn-connect" id="connect-btn" onclick="connectPi()">🔗 CONNECTER PI WALLET</button>
+
+    <div class="pay-card">
+      <h3>💰 MISE PAR PARTIE</h3>
+      <div class="pay-amount">1 π<span>Pi Testnet par partie</span></div>
+      <div class="pay-features">
+        <span class="pay-feature">🎲 Ludo complet</span>
+        <span class="pay-feature">👥 2-4 joueurs</span>
+        <span class="pay-feature">🏆 Classement</span>
+      </div>
+    </div>
+
+    <p style="font-size:13px;color:rgba(255,255,255,.5);text-align:center;margin-bottom:14px;">Nombre de joueurs</p>
+    <div class="player-select">
+      <button class="player-btn" data-n="2">2<span>joueurs</span></button>
+      <button class="player-btn selected" data-n="3">3<span>joueurs</span></button>
+      <button class="player-btn" data-n="4">4<span>joueurs</span></button>
+    </div>
+
+    <button class="btn-main" id="play-btn" onclick="requestPayment()">🎮 JOUER POUR 1 Pi</button>
+    <button class="btn-secondary" onclick="toggleRules()">📜 Règles du jeu</button>
+
+    <div id="rules" style="display:none;background:#13132a;border:1px solid rgba(108,63,209,.2);border-radius:14px;padding:16px;margin-top:14px;text-align:left;">
+      <p style="font-family:'Orbitron',monospace;font-size:11px;color:#f0a500;margin-bottom:10px;letter-spacing:2px;">⚡ RÈGLES PIARENA</p>
+      <ul style="list-style:none;">
+        <li style="font-size:12px;color:rgba(255,255,255,.6);margin-bottom:6px;">▸ Lance le dé pour avancer tes pions</li>
+        <li style="font-size:12px;color:rgba(255,255,255,.6);margin-bottom:6px;">▸ Fais un 6 pour sortir un pion</li>
+        <li style="font-size:12px;color:rgba(255,255,255,.6);margin-bottom:6px;">▸ Un 6 te donne un tour bonus</li>
+        <li style="font-size:12px;color:rgba(255,255,255,.6);margin-bottom:6px;">▸ Capture les pions adverses</li>
+        <li style="font-size:12px;color:rgba(255,255,255,.6);">▸ Ramène tous tes pions au centre</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- GAME -->
+<div id="game" class="screen">
+  <div class="game-info">
+    <div class="turn-indicator" id="turn-text">Tour: Rouge</div>
+    <button class="btn-small" onclick="showHome()">🏠 Menu</button>
+  </div>
+  <div class="players-status" id="players-status"></div>
+  <div id="board-wrap"><div id="board"></div></div>
+  <div id="msg">Lance le dé !</div>
+  <div class="dice-area">
+    <div id="dice">🎲</div>
+    <div class="dice-info">
+      <div class="dice-result" id="dice-val">-</div>
+      <div class="dice-label">résultat</div>
+    </div>
+    <button id="roll-btn" onclick="rollDice()">LANCER</button>
+  </div>
+</div>
+
+<!-- WIN -->
+<div id="win" class="screen">
+  <div class="win-emoji">🏆</div>
+  <div class="win-title" id="win-title">VICTOIRE !</div>
+  <div class="win-sub" id="win-sub">Félicitations !</div>
+  <button class="btn-main" onclick="showHome()">🔄 REJOUER</button>
+</div>
+
+<!-- PAYMENT MODAL -->
+<div id="pay-modal">
+  <div class="pay-modal-card">
+    <h2>💰 PAIEMENT PI</h2>
+    <p>Lance une partie de Ludo sur Pi Network</p>
+    <div class="pay-modal-amount">1 π<span>Pi Testnet</span></div>
+    <button class="btn-pay" onclick="confirmPayment()">✅ CONFIRMER ET JOUER</button>
+    <button class="btn-cancel" onclick="closePayModal()">Annuler</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const Pi = window.Pi;
+let piUser = null;
+let piAuthenticated = false;
+let numPlayers = 3;
+let players = [], currentPlayer = 0, diceValue = 0, diceRolled = false, movablePions = [];
+const COLORS = ['red','blue','green','yellow'];
+const COLOR_NAMES = { red:'Rouge', blue:'Bleu', green:'Vert', yellow:'Jaune' };
+const DICE_FACES = ['⚀','⚁','⚂','⚃','⚄','⚅'];
+const SAFE_POSITIONS = [1,9,14,22,27,35,40,48];
+
+function buildPath() {
+  return [
+    [6,1],[6,2],[6,3],[6,4],[6,5],
+    [5,6],[4,6],[3,6],[2,6],[1,6],[0,6],[0,7],
+    [0,8],[1,8],[2,8],[3,8],[4,8],[5,8],
+    [6,9],[6,10],[6,11],[6,12],[6,13],[6,14],[7,14],
+    [8,14],[8,13],[8,12],[8,11],[8,10],[8,9],
+    [9,8],[10,8],[11,8],[12,8],[13,8],[14,8],[14,7],
+    [14,6],[13,6],[12,6],[11,6],[10,6],[9,6],
+    [8,5],[8,4],[8,3],[8,2],[8,1],[8,0],[7,0],[6,0]
+  ];
+}
+const MAIN_PATH = buildPath();
+const PATH_LEN = MAIN_PATH.length;
+
+// Pi SDK
+function initPi() {
+  try {
+    Pi.init({ version:"2.0", sandbox:true });
+  } catch(e) { console.log('Pi SDK non disponible'); }
+}
+
+function connectPi() {
+  try {
+    Pi.authenticate(['username','payments'], onIncompletePayment)
+      .then(auth => {
+        piUser = auth.user;
+        piAuthenticated = true;
+        document.getElementById('pi-username').textContent = piUser.username;
+        document.getElementById('status-bar').className = 'status-bar status-connected';
+        document.getElementById('status-bar').textContent = '✅ Connecté : ' + piUser.username;
+        document.getElementById('connect-btn').textContent = '✅ PI WALLET CONNECTÉ';
+        document.getElementById('connect-btn').style.opacity = '0.6';
+        document.getElementById('connect-btn').disabled = true;
+        toast('✅ Connecté : ' + piUser.username);
+      })
+      .catch(() => {
+        toast('❌ Connexion Pi échouée');
+      });
+  } catch(e) {
+    toast('⚠️ Pi Browser requis');
+  }
+}
+
+function onIncompletePayment(payment) {
+  console.log('Paiement incomplet:', payment);
+}
+
+function requestPayment() {
+  if (!piAuthenticated) {
+    toast('⚠️ Connecte ton wallet Pi d\'abord !');
+    return;
+  }
+  document.getElementById('pay-modal').classList.add('show');
+}
+
+function closePayModal() {
+  document.getElementById('pay-modal').classList.remove('show');
+}
+
+function confirmPayment() {
+  closePayModal();
+  toast('⏳ Traitement du paiement...');
+
+  const paymentData = {
+    amount: 1,
+    memo: 'PiArena — Partie de Ludo',
+    metadata: { game: 'piarena-ludo', players: numPlayers }
+  };
+
+  const callbacks = {
+    onReadyForServerApproval: function(paymentId) {
+      console.log('Paiement prêt:', paymentId);
+      // En production, envoyer au backend pour approbation
+      // Pour testnet, on approuve directement
+      toast('✅ Paiement approuvé !');
+    },
+    onReadyForServerCompletion: function(paymentId, txid) {
+      console.log('Paiement complété:', paymentId, txid);
+      toast('🎮 Paiement réussi ! La partie commence...');
+      setTimeout(() => startGame(), 1000);
+    },
+    onCancel: function(paymentId) {
+      toast('❌ Paiement annulé');
+    },
+    onError: function(error, payment) {
+      console.error('Erreur paiement:', error);
+      toast('⚠️ Erreur — Partie lancée en mode test');
+      setTimeout(() => startGame(), 500);
+    }
+  };
+
+  try {
+    Pi.createPayment(paymentData, callbacks);
+  } catch(e) {
+    toast('⚠️ Mode démo — Partie lancée !');
+    setTimeout(() => startGame(), 500);
