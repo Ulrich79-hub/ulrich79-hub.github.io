@@ -1,0 +1,38 @@
+body {
+  margin:0;
+  font-family: Arial;
+  background:#0a0a1a;
+  color:white;
+}
+
+#topbar {
+  display:flex;
+  justify-content:space-between;
+  padding:10px;
+  background:#111;
+}
+
+.page {
+  display:none;
+  padding:20px;
+}
+
+.page.active {
+  display:block;
+}
+
+#nav {
+  position:fixed;
+  bottom:0;
+  width:100%;
+  display:flex;
+  justify-content:space-around;
+  background:#111;
+  padding:10px;
+}
+
+button {
+  padding:10px;
+  border:none;
+  border-radius:10px;
+}
