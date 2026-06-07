@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>PiArena — Ludo Pi Network</title>
 <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -1159,6 +1161,12 @@ html, body {
           </div>
         </div>
 
+        <!-- Leaderboard -->
+        <div style="font-family:'Orbitron',monospace;font-size:12px;letter-spacing:2px;color:#f0a500;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid rgba(240,165,0,.2)">🏆 TOP JOUEURS</div>
+        <div style="background:#12122a;border:1px solid rgba(108,63,209,.2);border-radius:14px;padding:14px;margin-bottom:14px" id="home-leaderboard">
+          <div style="text-align:center;color:rgba(255,255,255,.3);font-size:12px;padding:10px">Chargement...</div>
+        </div>
+
       </div>
     </div>
 
@@ -1684,6 +1692,74 @@ html, body {
 <div id="toast"></div>
 
 <script>
+// ══════════════════════════════════════════
+// FIREBASE CONFIG & INIT
+// ══════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaS0pUMInpPZtG63tVXZ5L6MAja72gUPhdY-Y",
+  authDomain: "piarena-603c4.firebaseapp.com",
+  projectId: "piarena-603c4",
+  storageBucket: "piarena-603c4.firebasestorage.app",
+  messagingSenderId: "132766086542",
+  appId: "1:132766086542:web:07aee9a45f2cff64f1206f"
+};
+try { firebase.initializeApp(firebaseConfig); } catch(e) {}
+const db = typeof firebase !== 'undefined' ? firebase.firestore() : null;
+
+async function saveToFirebase() {
+  if(!piUser || !db) return;
+  try {
+    await db.collection('users').doc(piUser.username).set({
+      username: piUser.username,
+      coins: gameState.coins, gems: gameState.gems,
+      xp: gameState.xp, level: gameState.level,
+      streak: gameState.streak, gamesPlayed: gameState.gamesPlayed,
+      wins: gameState.wins, captures: gameState.captures,
+      piWon: gameState.piWon,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, {merge: true});
+  } catch(e) { console.log('Firebase save:', e.message); }
+}
+
+async function loadFromFirebase() {
+  if(!piUser || !db) return;
+  try {
+    const doc = await db.collection('users').doc(piUser.username).get();
+    if(doc.exists) {
+      const d = doc.data();
+      if(d.coins !== undefined) gameState.coins = d.coins;
+      if(d.gems !== undefined) gameState.gems = d.gems;
+      if(d.xp !== undefined) gameState.xp = d.xp;
+      if(d.level !== undefined) gameState.level = d.level;
+      if(d.wins !== undefined) gameState.wins = d.wins;
+      if(d.gamesPlayed !== undefined) gameState.gamesPlayed = d.gamesPlayed;
+      if(d.captures !== undefined) gameState.captures = d.captures;
+      if(d.piWon !== undefined) gameState.piWon = d.piWon;
+      updateUI();
+    }
+  } catch(e) { console.log('Firebase load:', e.message); }
+}
+
+async function loadLeaderboard() {
+  const lb = document.getElementById('home-leaderboard');
+  if(!lb) return;
+  if(!db) { lb.innerHTML='<div style="text-align:center;color:rgba(255,255,255,.3);font-size:12px;padding:10px">Classement bientôt disponible</div>'; return; }
+  try {
+    const snap = await db.collection('users').orderBy('wins','desc').limit(5).get();
+    if(snap.empty) { lb.innerHTML='<div style="text-align:center;color:rgba(255,255,255,.3);font-size:12px;padding:10px">Sois le premier ! 🏆</div>'; return; }
+    const medals=['🥇','🥈','🥉','4️⃣','5️⃣'];
+    lb.innerHTML = snap.docs.map((doc,i) => {
+      const d = doc.data();
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+        <div style="font-size:18px;width:28px;text-align:center">${medals[i]}</div>
+        <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#6c3fd1,#f0a500);display:flex;align-items:center;justify-content:center;font-size:14px">π</div>
+        <div style="flex:1"><div style="font-size:13px;font-weight:600">${d.username||'Joueur'}</div><div style="font-size:10px;color:rgba(255,255,255,.4)">${d.gamesPlayed||0} parties</div></div>
+        <div style="font-size:11px;color:#f0a500;font-weight:600">${d.wins||0} 🏆</div>
+      </div>`;
+    }).join('');
+  } catch(e) { lb.innerHTML='<div style="text-align:center;color:rgba(255,255,255,.3);font-size:12px;padding:10px">Classement bientôt 🏆</div>'; }
+}
+
 // ══════════════════════════════════════════
 // GAME STATE & CONFIG
 // ══════════════════════════════════════════
@@ -2443,6 +2519,7 @@ function onAppReady() {
   buildStreak();
   buildAchievements();
   buildHistory();
+  loadLeaderboard();
   
   // Show tutorial if first time
   if (!gameState.tutorialDone) {
@@ -2467,6 +2544,7 @@ function initPiSDK() {
         document.getElementById('home-username').textContent = piUser.username;
         document.getElementById('profile-username').textContent = piUser.username;
         toast(`✅ Connecté : ${piUser.username}`);
+        loadFromFirebase();
         updateUI();
       })
       .catch(() => {
@@ -3343,6 +3421,7 @@ function showVictory(winnerIdx) {
   
   gameState.gamesPlayed++;
   saveState();
+  saveToFirebase();
   updateUI();
   
   // Show victory modal
