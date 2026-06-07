@@ -1,67 +1,70 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PiArena</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PiArena</title>
 
-  <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css">
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-
-  <!-- Pi SDK -->
-  <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+<script src="https://sdk.minepi.com/pi-sdk.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 </head>
 
 <body>
 
-<!-- APP ROOT -->
+<!-- APP -->
 <div id="app">
 
-  <!-- TOP BAR -->
-  <header id="topbar">
-    <div class="logo">π ARENA</div>
+  <!-- TOP -->
+  <div id="topbar">
+    <div class="logo">PI ARENA</div>
 
-    <div class="currencies">
-      <span>🪙 <b id="coins">0</b></span>
-      <span>💎 <b id="gems">0</b></span>
-      <span>π <b id="pi">0.0</b></span>
+    <div class="coins">
+      🪙 <span id="coins">0</span>
+      💎 <span id="gems">0</span>
+      π <span id="pi">0.0</span>
     </div>
 
-    <button id="shopBtn">+</button>
-  </header>
+    <button onclick="showPage('shop')">+</button>
+  </div>
 
   <!-- PAGES -->
-  <main id="pages">
+  <div id="pages">
 
-    <section id="home" class="page active"></section>
-    <section id="event" class="page"></section>
-    <section id="shop" class="page"></section>
-    <section id="profile" class="page"></section>
+    <div id="home" class="page active">
+      <h2>Accueil</h2>
+      <button onclick="openGame()">Jouer</button>
+    </div>
 
-  </main>
+    <div id="shop" class="page">
+      <h2>Boutique</h2>
+      <button onclick="buyCoins()">Acheter coins</button>
+    </div>
+
+    <div id="profile" class="page">
+      <h2>Profil</h2>
+    </div>
+
+  </div>
 
   <!-- NAV -->
-  <nav id="bottomnav">
-    <button data-page="home">🏠</button>
-    <button data-page="event">🎪</button>
-    <button data-page="shop">💎</button>
-    <button data-page="profile">👤</button>
-  </nav>
+  <div id="nav">
+    <button onclick="showPage('home')">🏠</button>
+    <button onclick="showPage('shop')">🛒</button>
+    <button onclick="showPage('profile')">👤</button>
+  </div>
 
 </div>
 
 <!-- GAME -->
-<div id="game" class="hidden">
-  <canvas id="board"></canvas>
-
-  <button id="rollBtn">Lancer</button>
+<div id="game" style="display:none;">
+  <h2>Jeu Ludo</h2>
+  <button onclick="rollDice()">Lancer dé</button>
+  <p id="dice">-</p>
+  <button onclick="closeGame()">Quitter</button>
 </div>
-
-<!-- MODALS -->
-<div id="modal"></div>
 
 <script src="js/app.js"></script>
 <script src="js/game.js"></script>
